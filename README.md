@@ -1,7 +1,6 @@
 # @kongyo2/nicotag-api
 
 ニコニコ動画（nicovideo.jp）の動画 ID からタグ一覧を取得する非公式クライアントです。
-[`@kongyo2/nicoran-api`](https://github.com/kongyo2/nicoran-api) と同じ仕組み（HTML スクレイピング + 多段抽出器フォールバック + Zod 検証）で構築されています。
 
 ## 特徴
 
