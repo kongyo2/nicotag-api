@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-types
+coverage
+*.min.js
+package-lock.json
+.tsbuildinfo
+.tmp
+.tmp_*
+**/*.md
+nicoran-api-reference

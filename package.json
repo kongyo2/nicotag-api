@@ -1,0 +1,67 @@
+{
+  "name": "@kongyo2/nicotag-api",
+  "version": "0.1.0",
+  "description": "Unofficial alternative client for fetching nicovideo.jp video tags by video id via HTML scraping with multi-fallback parsers.",
+  "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kongyo2/nicotag-api.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist-types/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist-types/index.d.ts",
+  "files": [
+    "dist",
+    "dist-types"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"const f=require('fs');for(const d of ['dist','dist-types','.tsbuildinfo']){try{f.rmSync(d,{recursive:true,force:true});}catch{}}\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:file": "oxlint",
+    "lint": "oxlint --silent",
+    "lint:strict": "oxlint --deny-warnings",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:live": "vitest run --reporter=verbose tests/live.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "nicovideo",
+    "niconico",
+    "tags",
+    "scraper",
+    "unofficial-api"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "he": "^1.2.0",
+    "node-html-parser": "^6.1.13",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/he": "^1.2.3",
+    "@types/node": "^22.5.0",
+    "oxlint": "^0.9.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.6"
+  }
+}

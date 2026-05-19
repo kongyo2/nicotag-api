@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prettier (format:check)
+        run: npm run format:check
+
+      - name: Oxlint (lint:strict)
+        run: npm run lint:strict
+
+      - name: Typecheck (src)
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Typecheck (tests)
+        run: npx tsc -p tsconfig.test.json --noEmit
+
+      - name: Unit tests (vitest, excluding live)
+        run: npx vitest run --exclude='**/live.test.ts'
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -f dist/index.js
+          test -f dist-types/index.d.ts
+          node -e "import('./dist/index.js').then((m) => { if (typeof m.fetchVideoTags !== 'function') throw new Error('fetchVideoTags not exported'); if (typeof m.fetchVideo !== 'function') throw new Error('fetchVideo not exported'); console.log('dist OK'); })"
+
+  live:
+    name: live integration (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Live test against nicovideo.jp
+        env:
+          NICOTAG_LIVE: '1'
+        run: npx vitest run tests/live.test.ts --reporter=verbose

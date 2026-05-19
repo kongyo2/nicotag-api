@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-types
+coverage
+.tsbuildinfo
+*.log
+.DS_Store
+.tmp
+.tmp_*
+nicoran-api-reference

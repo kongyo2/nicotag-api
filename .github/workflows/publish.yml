@@ -1,0 +1,118 @@
+name: Publish to npm (@kongyo2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run npm publish in --dry-run mode (no actual upload)'
+        type: boolean
+        default: false
+      dist_tag:
+        description: 'npm dist-tag to publish under (latest / next / beta / ...)'
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: verify and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: npm-publish
+      url: https://www.npmjs.com/package/@kongyo2/nicotag-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@kongyo2'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Show package name and version
+        run: |
+          node -p "require('./package.json').name + '@' + require('./package.json').version"
+
+      - name: Prettier (format:check)
+        run: npm run format:check
+
+      - name: Oxlint (lint:strict)
+        run: npm run lint:strict
+
+      - name: Typecheck (src)
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Typecheck (tests)
+        run: npx tsc -p tsconfig.test.json --noEmit
+
+      - name: Unit tests (excluding live)
+        run: npx vitest run --exclude='**/live.test.ts'
+
+      - name: Clean
+        run: npm run clean
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -f dist/index.js
+          test -f dist-types/index.d.ts
+          node -e "import('./dist/index.js').then((m) => { if (typeof m.fetchVideoTags !== 'function') { throw new Error('fetchVideoTags not exported'); } console.log('dist OK'); })"
+
+      - name: Inspect package contents (npm pack --dry-run)
+        run: npm pack --dry-run
+
+      - name: Check tag does not already exist on npm
+        if: ${{ !inputs.dry_run }}
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "Error: ${NAME}@${VERSION} is already published on npm. Bump the version in package.json before publishing."
+            exit 1
+          fi
+          echo "OK: ${NAME}@${VERSION} is not yet on npm."
+
+      - name: Publish (dry-run)
+        if: ${{ inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --dry-run --tag "${{ inputs.dist_tag }}"
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --tag "${{ inputs.dist_tag }}"
+
+      - name: Summary
+        if: ${{ !cancelled() }}
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          {
+            echo "### npm publish summary"
+            echo ""
+            echo "- Package: \`${NAME}\`"
+            echo "- Version: \`${VERSION}\`"
+            echo "- dist-tag: \`${{ inputs.dist_tag }}\`"
+            echo "- dry-run: \`${{ inputs.dry_run }}\`"
+            if [ "${{ inputs.dry_run }}" != "true" ]; then
+              echo "- URL: https://www.npmjs.com/package/${NAME}/v/${VERSION}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
